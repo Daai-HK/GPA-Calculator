@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VMA GPA Calculator</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f6f7fb;color:#17181c}
+header{padding:28px 6%;background:#fff;border-bottom:1px solid #e8e8ee;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.logo{font-size:24px;font-weight:800}.logo span{font-weight:400;color:#777}
+main{max-width:1200px;margin:32px auto;padding:0 20px}
+.hero{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:25px}.hero h1{font-size:38px;margin:0 0 8px}.hero p{color:#70727a;margin:0}
+.controls{display:flex;gap:10px}.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:650;cursor:pointer}.primary{background:#17181c;color:#fff}.light{background:#fff;border:1px solid #ddd}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}.card{background:#fff;border:1px solid #e7e7ed;border-radius:16px;padding:20px}.label{color:#747680;font-size:13px}.value{font-size:30px;font-weight:800;margin-top:5px}
+.panel{background:#fff;border:1px solid #e7e7ed;border-radius:16px;padding:20px;margin-bottom:20px}.panel h2{margin:0 0 16px;font-size:19px}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:13px 10px;border-bottom:1px solid #eee}th{font-size:12px;color:#777;text-transform:uppercase}td input,td select{width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;background:#fff}
+.delete{border:0;background:transparent;cursor:pointer;font-size:17px}.empty{text-align:center;color:#777;padding:30px}
+.footer-note{color:#777;font-size:13px}.site-credit{text-align:center;margin:28px 0 4px;color:#9a9ba2;font-size:12px}.header-tools,.language,.scale{display:flex;gap:8px;align-items:center}.header-tools{flex-wrap:wrap;justify-content:flex-end}.language select,.scale select{padding:9px;border-radius:8px;border:1px solid #ddd;background:#fff}.help-btn{padding:9px 12px}.code-column{width:110px}.course-code{min-width:86px}.catalog-search{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:9px;font:inherit;margin:4px 0 14px}.catalog-list{max-height:min(58vh,520px);overflow:auto;border:1px solid #eee;border-radius:10px}.catalog-list table{min-width:540px}.catalog-meta{margin:-4px 0 12px;color:#70727a;font-size:13px}.catalog-empty{padding:22px;text-align:center;color:#777}
+@media(max-width:800px){header{align-items:flex-start}.header-tools{justify-content:flex-start}.grid{grid-template-columns:repeat(2,1fr)}.hero{display:block}.controls{margin-top:15px}.panel{overflow:auto}}
+.import-panel{margin-bottom:20px}.import-grid textarea{width:100%;min-height:180px;resize:vertical;padding:12px;border:1px solid #ddd;border-radius:10px;font:inherit}.import-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}.preview{margin-top:16px;overflow:auto}.preview table{min-width:650px}.preview .preview-credit{min-width:120px}.preview tr.credit-unmatched td{background:#fff1f1}.preview tr.credit-unmatched td:first-child{box-shadow:inset 3px 0 #cf3f3f}.status{margin-top:10px;color:#70727a;font-size:13px}.warning{color:#9a5b00}.success{color:#176b3a}</style>
+<style>.import-choice-backdrop{position:fixed;inset:0;background:rgba(23,24,28,.42);display:none;align-items:center;justify-content:center;padding:20px;z-index:10}.import-choice-dialog{width:min(440px,100%);background:#fff;border-radius:16px;padding:24px;box-shadow:0 18px 55px rgba(0,0,0,.2)}.import-choice-dialog h3{margin:0 0 8px;font-size:20px}.import-choice-dialog p{margin:0;color:#70727a;line-height:1.5}.import-choice-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:22px}.danger{background:#b42318;color:#fff}</style>
+</head>
+<body>
+<header><div class="logo">VMA <span>GPA Calculator</span></div><div class="header-tools"><button class="btn light help-btn" type="button" onclick="openGuide()" data-i18n="guide">Guide</button><button class="btn light help-btn" type="button" onclick="openCatalog()" data-i18n="courseCatalog">Course Catalog</button><div class="language"><span data-i18n="language">Language</span><select id="language" onchange="setLanguage(this.value)"><option value="en">English</option><option value="zh">中文</option></select></div><div class="scale"><span data-i18n="scale">Scale</span><select id="scale"><option value="4.3">4.3</option><option value="4">4.0</option></select></div></div></header>
+<main>
+<section class="hero"><div><h1 data-i18n="heroTitle">Your academic snapshot</h1><p data-i18n="heroSubtitle">Track courses, credits, grades, and calculate your GPA instantly.</p></div><div class="controls"><button class="btn light" onclick="resetData()" data-i18n="reset">Reset</button><button class="btn light" onclick="toggleImporter()" data-i18n="importPowerSchool">Import from PowerSchool</button><button class="btn primary" onclick="addCourse()" data-i18n="addCourse">+ Add course</button></div></section>
+<section class="panel import-panel" id="importer" style="display:none">
+<h2 data-i18n="importTitle">Import from PowerSchool</h2>
+<p class="footer-note" data-i18n="importNote">Paste PowerSchool grades. Credits are matched from the built-in 2026–2027 course database.</p>
+<div class="import-grid">
+<div><div class="label" data-i18n="powerSchoolGrades">PowerSchool Grades</div><textarea id="gradesText" data-i18n-placeholder="gradesPlaceholder" placeholder="Paste the copied PowerSchool grades page here..."></textarea></div>
+</div>
+<div class="import-actions"><button class="btn primary" onclick="parsePowerSchool()" data-i18n="detectCourses">Detect Courses</button><button class="btn light" onclick="clearImporter()" data-i18n="clear">Clear</button></div>
+<div id="importStatus" class="status"></div>
+<div id="preview" class="preview"></div>
+</section>
+<section class="grid">
+<div class="card"><div class="label" data-i18n="cumulativeGpa">Cumulative GPA</div><div class="value" id="gpa">0.00</div></div>
+<div class="card"><div class="label" data-i18n="totalCredits">Total credits</div><div class="value" id="credits">0</div></div>
+<div class="card"><div class="label" data-i18n="averagePercentage">Average percentage</div><div class="value" id="avg">0%</div></div>
+<div class="card"><div class="label" data-i18n="courses">Courses</div><div class="value" id="count">0</div></div>
+</section>
+<section class="panel">
+<h2 data-i18n="courseList">Courses</h2>
+<table><thead><tr><th data-i18n="course">Course</th><th class="code-column" data-i18n="code">Code</th><th data-i18n="grade">Grade</th><th data-i18n="credits">Credits</th><th data-i18n="points">Points</th><th></th></tr></thead>
+<tbody id="courses"></tbody></table>
+<div id="empty" class="empty" data-i18n="noCourses">No courses yet. Add your first course.</div>
+</section>
+<p class="footer-note" data-i18n="footer">Grades use a standard configurable scale. GPA is weighted by credits. Your data is saved locally in this browser.</p>
+<p class="site-credit">Developed by Byron Dai</p>
+</main>
+<div class="import-choice-backdrop" id="importChoiceDialog" role="dialog" aria-modal="true" aria-labelledby="importChoiceTitle">
+<div class="import-choice-dialog">
+<h3 id="importChoiceTitle" data-i18n="importCourses">Import courses</h3>
+<p data-i18n="importChoiceText">You already have courses saved. Would you like to keep them and add the imported courses, or overwrite them?</p>
+<div class="import-choice-actions"><button class="btn light" type="button" onclick="closeImportChoice()" data-i18n="cancel">Cancel</button><button class="btn light" type="button" onclick="commitImportedCourses(false)" data-i18n="keepAdd">Keep &amp; Add</button><button class="btn danger" type="button" onclick="commitImportedCourses(true)" data-i18n="overwrite">Overwrite</button></div>
+</div>
+</div>
+<div class="import-choice-backdrop" id="guideDialog" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+<div class="import-choice-dialog">
+<h3 id="guideTitle" data-i18n="guideTitle">How to use VMA GPA Calculator</h3>
+<p data-i18n="guideIntro">Track courses manually or import them from PowerSchool.</p>
+<p style="margin-top:16px"><strong data-i18n="guideStep1Title">1. Add and edit courses</strong><br><span data-i18n="guideStep1Text">Use Add course to enter a course, percentage, and credits. Changes are saved locally.</span></p>
+<p style="margin-top:12px"><strong data-i18n="guideStep2Title">2. Import from PowerSchool</strong><br><span data-i18n="guideStep2Text">Paste your PowerSchool grades, then select Detect Courses. Credits are matched from the 2026–2027 course database.</span></p>
+<p style="margin-top:12px"><strong data-i18n="guideStep3Title">3. Check credits</strong><br><span data-i18n="guideStep3Text">Review the preview. Unmatched credits are highlighted and can be entered manually.</span></p>
+<p style="margin-top:12px"><strong data-i18n="guideStep4Title">4. Choose how to import</strong><br><span data-i18n="guideStep4Text">When courses already exist, choose whether to keep them or overwrite them.</span></p>
+<div class="import-choice-actions"><button class="btn primary" type="button" onclick="closeGuide()" data-i18n="close">Close</button></div>
+</div>
+</div>
+<div class="import-choice-backdrop" id="catalogDialog" role="dialog" aria-modal="true" aria-labelledby="catalogTitle">
+<div class="import-choice-dialog" style="width:min(820px,100%)">
+<h3 id="catalogTitle" data-i18n="courseCatalog">Course Catalog</h3>
+<p class="catalog-meta" data-i18n="catalogSource">Source: VMA 2026–2027 US Track Course Catalogue</p>
+<input id="catalogSearch" class="catalog-search" type="search" oninput="renderCatalog()" data-i18n-placeholder="catalogSearchPlaceholder" placeholder="Search by course name or code...">
+<div id="catalogList" class="catalog-list"></div>
+<div class="import-choice-actions"><button class="btn primary" type="button" onclick="closeCatalog()" data-i18n="close">Close</button></div>
+</div>
+</div>
+<script>
+let courses=JSON.parse(localStorage.getItem("gradepilot")||"null")||[];
+const scales={
+"4.3":[[97,4.3,"A+"],[93,4.0,"A"],[90,3.7,"A-"],[87,3.3,"B+"],[83,3.0,"B"],[80,2.7,"B-"],[77,2.3,"C+"],[73,2.0,"C"],[70,1.7,"C-"],[67,1.3,"D+"],[63,1.0,"D"],[60,0.7,"D-"],[0,0,"F"]],
+"4":[[97,4.0,"A+"],[93,4.0,"A"],[90,3.7,"A-"],[87,3.3,"B+"],[83,3.0,"B"],[80,2.7,"B-"],[77,2.3,"C+"],[73,2.0,"C"],[70,1.7,"C-"],[67,1.3,"D+"],[63,1.0,"D"],[60,0.7,"D-"],[0,0,"F"]]
+};
+let language=localStorage.getItem("gradepilot-language")==="zh"?"zh":"en";
+const translations={
+ en:{
+  guide:"Guide",language:"Language",scale:"Scale",heroTitle:"Your academic snapshot",heroSubtitle:"Track courses, credits, grades, and calculate your GPA instantly.",reset:"Reset",importPowerSchool:"Import from PowerSchool",addCourse:"+ Add course",importTitle:"Import from PowerSchool",importNote:"Paste PowerSchool grades. Credits are matched from the built-in 2026–2027 course database.",powerSchoolGrades:"PowerSchool Grades",gradesPlaceholder:"Paste the copied PowerSchool grades page here...",detectCourses:"Detect Courses",clear:"Clear",cumulativeGpa:"Cumulative GPA",totalCredits:"Total credits",averagePercentage:"Average percentage",courses:"Courses",courseList:"Courses",code:"Code",course:"Course",grade:"Grade",credits:"Credits",points:"Points",noCourses:"No courses yet. Add your first course.",footer:"Grades use a standard configurable scale. GPA is weighted by credits. Your data is saved locally in this browser.",importCourses:"Import courses",importChoiceText:"You already have courses saved. Would you like to keep them and add the imported courses, or overwrite them?",cancel:"Cancel",keepAdd:"Keep & Add",overwrite:"Overwrite",guideTitle:"How to use GradePilot",guideIntro:"Track courses manually or import them from PowerSchool.",guideStep1Title:"1. Add and edit courses",guideStep1Text:"Use Add course to enter a course code, name, percentage, and credits. Changes are saved locally.",guideStep2Title:"2. Import from PowerSchool",guideStep2Text:"Paste your PowerSchool grades, then select Detect Courses. Credits are matched from the 2026–2027 course database.",guideStep3Title:"3. Check credits",guideStep3Text:"Review the preview. Unmatched credits are highlighted and can be entered manually.",guideStep4Title:"4. Choose how to import",guideStep4Text:"When courses already exist, choose whether to keep them or overwrite them.",close:"Close",newCourse:"New Course",deleteCourse:"Delete course",resetConfirm:"Reset all courses? This will clear your current courses.",noMatches:"No confident course/grade/percentage matches were detected. Try pasting the copied PowerSchool text again.",detectedMissing:"Detected {count} course(s). {missing} course(s) need a database match or manual credit.",detectedComplete:"Detected {count} course(s). All detected courses have credits.",detectedCourses:"Detected Courses",percentage:"Percentage",enterCredits:"Enter credits",importButton:"Import Courses",noCreditsToImport:"No courses with matched credits can be imported yet.",importedKept:"Imported {count} course(s). Previous courses were kept.",importedOverwritten:"Imported {count} course(s). Previous courses were overwritten."
+ },
+ zh:{
+  guide:"使用说明",language:"语言",scale:"Scale",heroTitle:"学业概览",heroSubtitle:"记录课程、学分和成绩，即时计算 GPA。",reset:"重置",importPowerSchool:"从 PowerSchool 导入",addCourse:"+ 添加课程",importTitle:"从 PowerSchool 导入",importNote:"粘贴 PowerSchool 成绩；学分会从内置的 2026–2027 课程数据库自动匹配。",powerSchoolGrades:"PowerSchool 成绩",gradesPlaceholder:"在此粘贴复制的 PowerSchool 成绩页面...",detectCourses:"识别课程",clear:"清除",cumulativeGpa:"累计 GPA",totalCredits:"总学分",averagePercentage:"平均百分比",courses:"课程数量",courseList:"课程",code:"代码",course:"课程",grade:"成绩",credits:"学分",points:"绩点",noCourses:"还没有课程，添加第一门课程吧。",footer:"成绩采用可切换的标准评分体系，GPA 按学分加权计算。数据仅保存在此浏览器中。",importCourses:"导入课程",importChoiceText:"你已经保存了课程。请选择保留原课程并追加，或使用本次导入内容覆盖原课程。",cancel:"取消",keepAdd:"保留并追加",overwrite:"覆盖原课程",guideTitle:"GradePilot 使用说明",guideIntro:"你可以手动记录课程，也可以从 PowerSchool 导入。",guideStep1Title:"1. 添加和编辑课程",guideStep1Text:"点击“添加课程”填写课程代码、名称、百分比和学分；修改会自动保存在本浏览器。",guideStep2Title:"2. 从 PowerSchool 导入",guideStep2Text:"粘贴 PowerSchool 成绩后点击“识别课程”；学分会从 2026–2027 课程数据库自动匹配。",guideStep3Title:"3. 检查学分",guideStep3Text:"查看预览；未匹配的学分会标红，可直接手动填写。",guideStep4Title:"4. 选择导入方式",guideStep4Text:"若已有课程，可选择保留并追加，或覆盖原课程。",close:"关闭",newCourse:"新课程",deleteCourse:"删除课程",resetConfirm:"重置全部课程吗？这会清空当前课程。",noMatches:"未识别到可信的课程、成绩和百分比组合。请重新粘贴 PowerSchool 文本。",detectedMissing:"已识别 {count} 门课程；其中 {missing} 门未在数据库中匹配到学分，请手动填写。",detectedComplete:"已识别 {count} 门课程，所有课程均已填写学分。",detectedCourses:"已识别课程",percentage:"百分比",enterCredits:"填写学分",importButton:"导入课程",noCreditsToImport:"没有可导入的已填写学分课程。",importedKept:"已导入 {count} 门课程，原有课程已保留。",importedOverwritten:"已导入 {count} 门课程，原有课程已被覆盖。"
+ }
+};
+Object.assign(translations.en,{courseCatalog:"Course Catalog",catalogSource:"Source: VMA 2026–2027 US Track Course Catalogue",catalogSearchPlaceholder:"Search by course name or code...",guideTitle:"How to use VMA GPA Calculator"});
+Object.assign(translations.zh,{courseCatalog:"课程目录",catalogSource:"数据来源：VMA 2026–2027 US Track Course Catalogue",catalogSearchPlaceholder:"按课程名称或代码搜索...",guideTitle:"VMA GPA Calculator 使用说明"});
+function t(key){return translations[language][key]||translations.en[key]||key}
+function formatText(key,values){let output=t(key);Object.entries(values||{}).forEach(([name,value])=>output=output.replace(`{${name}}`,value));return output}
+function setLanguage(value){language=value==="zh"?"zh":"en";localStorage.setItem("gradepilot-language",language);applyLanguage()}
+function applyLanguage(){document.documentElement.lang=language==="zh"?"zh-CN":"en";document.getElementById("language").value=language;document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));document.querySelectorAll("[data-i18n-placeholder]").forEach(el=>el.placeholder=t(el.dataset.i18nPlaceholder));render();if(pendingImports.length)renderPreview();if(document.getElementById("catalogDialog").style.display==="flex")renderCatalog()}
+function points(n){
+ n=Number(n)||0; let s=scales[document.getElementById("scale").value];
+ return s.find(x=>n>=x[0])||s[s.length-1];
+}
+function save(){localStorage.setItem("gradepilot",JSON.stringify(courses))}
+function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]))}
+function updateSummary(){
+ let total=courses.reduce((a,c)=>a+Number(c.credits||0),0);
+ let weighted=courses.reduce((a,c)=>a+points(c.grade)[1]*Number(c.credits||0),0);
+ let pct=courses.length?courses.reduce((a,c)=>a+Number(c.grade||0),0)/courses.length:0;
+ document.getElementById("gpa").textContent=total?(weighted/total).toFixed(2):"0.00";
+ document.getElementById("credits").textContent=total;
+ document.getElementById("avg").textContent=pct.toFixed(1)+"%";
+ document.getElementById("count").textContent=courses.length;
+}
+function updateRowPoints(i){
+ const tr=document.querySelector(`tr[data-index="${i}"]`);
+ if(!tr)return;
+ const p=points(courses[i].grade);
+ tr.querySelector(".points").textContent=`${p[2]} · ${p[1].toFixed(1)}`;
+}
+function render(){
+ const body=document.getElementById("courses");
+ const oldInputs=new Map();
+ body.querySelectorAll("tr[data-index]").forEach(tr=>{
+   const i=tr.dataset.index;
+   tr.querySelectorAll("input").forEach((input,j)=>oldInputs.set(i+"-"+j,input.value));
+ });
+ body.innerHTML="";
+ courses.forEach((c,i)=>{
+   let p=points(c.grade), tr=document.createElement("tr");
+   tr.dataset.index=i;
+   tr.innerHTML=`<td><input data-field="name" value="${escapeHtml(c.name)}"></td>
+<td><input class="course-code" data-field="code" value="${escapeHtml(c.code)}"></td>
+<td><input data-field="grade" type="number" min="0" max="100" value="${escapeHtml(c.grade)}"></td>
+<td><input data-field="credits" type="number" min="0" step="1" value="${escapeHtml(c.credits)}"></td>
+<td class="points">${p[2]} · ${p[1].toFixed(1)}</td>
+<td><button class="delete" type="button" aria-label="${t("deleteCourse")}">×</button></td>`;
+   body.appendChild(tr);
+ });
+ document.getElementById("empty").style.display=courses.length?"none":"block";
+ updateSummary();
+}
+document.getElementById("courses").addEventListener("input",e=>{
+ const input=e.target, tr=input.closest("tr[data-index]");
+ if(!tr)return;
+ const i=Number(tr.dataset.index), field=input.dataset.field;
+ if(field==="name"||field==="code") courses[i][field]=input.value;
+ else courses[i][field]=input.value;
+ save();
+ updateSummary();
+ if(field==="grade"||field==="credits") updateRowPoints(i);
+});
+document.getElementById("courses").addEventListener("click",e=>{
+ if(!e.target.classList.contains("delete"))return;
+ const tr=e.target.closest("tr[data-index]");
+ courses.splice(Number(tr.dataset.index),1); save(); render();
+});
+
+function addCourse(){courses.push({name:t("newCourse"),code:"",grade:0,credits:5});save();render();requestAnimationFrame(()=>{const last=document.querySelector("#courses tr:last-child input");if(last){last.focus();last.select()}})}
+function resetData(){
+ if(confirm(t("resetConfirm"))){
+   courses=[];save();render();
+ }
+}
+document.getElementById("scale").onchange=()=>{document.querySelectorAll("#courses tr[data-index]").forEach((tr,i)=>updateRowPoints(i));updateSummary()};
+
+function toggleImporter(){
+ const el=document.getElementById("importer");
+ el.style.display=el.style.display==="none"?"block":"none";
+ if(el.style.display==="block") document.getElementById("gradesText").focus();
+}
+function clearImporter(){
+ document.getElementById("gradesText").value="";
+ document.getElementById("preview").innerHTML="";
+ document.getElementById("importStatus").textContent="";
+}
+function normalizeText(s){
+ return String(s||"").replace(/\u00a0/g," ").replace(/[ \t]+/g," ").trim();
+}
+function normName(s){
+ return normalizeText(s).toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+}
+function extractCode(s){
+ const m=String(s||"").match(/\b[A-Z]{2,6}\d{2,4}[A-Z]?\b/i);
+ return m?m[0].toUpperCase():"";
+}
+function gradeFromPercent(n){return points(Number(n))[2]}
+function isNoise(s){
+ const x=normName(s);
+ if(!x)return true;
+ const noise=["teacher","room","rm","email","attendance","not available","advisory","self study","pshe","college readiness","course","period","term","semester","days","time"];
+ return noise.some(w=>x===w||x.includes(w));
+}
+function parseGradeRecords(text){
+  /*
+    PowerSchool sometimes flattens its table into one very long clipboard
+    line. In that case, physical-line parsing cannot see the course before
+    Email. Treat every Email occurrence as an anchor and inspect only the
+    text immediately before and after that anchor.
+  */
+  {
+    const source=String(text||"")
+      .replace(/\r\n?/g,"\n")
+      .replace(/[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]/g," ")
+      .replace(/[\t\f\v]+/g," ");
+    const emailAnchors=[...source.matchAll(/\bEmail\b/gi)];
+    const detected=[];
+    const blockedNames=[
+      "email","teacher","room","rm","attendance","attendance by class",
+      "attendance totals","advisory","self study","self-study","pshe",
+      "college readiness","not available","course","period","term",
+      "semester","days","time","exp","s1","s2","absences","tardies"
+    ];
+
+    for(let i=0;i<emailAnchors.length;i++){
+      const anchor=emailAnchors[i];
+      const start=i ? emailAnchors[i-1].index+emailAnchors[i-1][0].length : 0;
+      const before=source.slice(start,anchor.index);
+      const beforeLines=before.split("\n").map(normalizeText).filter(Boolean);
+      const finalLine=beforeLines[beforeLines.length-1]||"";
+      const lastNotAvailable=before.toLowerCase().lastIndexOf("not available");
+      let name=lastNotAvailable>=0
+        ? before.slice(lastNotAvailable+"not available".length)
+        : finalLine;
+      name=normalizeText(name)
+        .replace(/^[•·▪◦]+\s*/,"")
+        .replace(/\s*\*+\s*$/,"")
+        .trim();
+
+      const normalName=normName(name);
+      if(!name || name.length<2 || name.length>100 || !/[A-Za-z]/.test(name))continue;
+      if(blockedNames.some(x=>normalName===x))continue;
+      if(/^(?:email|teacher|room|rm)\b/i.test(name))continue;
+
+      const afterStart=anchor.index+anchor[0].length;
+      const afterEnd=i+1<emailAnchors.length ? emailAnchors[i+1].index : source.length;
+      // The grade and percentage follow the teacher/room data. Requiring
+      // them as an adjacent pair prevents room 509 from becoming a score.
+      const after=source.slice(afterStart,Math.min(afterEnd,afterStart+800));
+      const pair=after.match(/(?:^|\s)(A\+|A-|A|B\+|B-|B|C\+|C-|C|D\+|D-|D|F)\s+(100(?:\.0+)?|[0-9]{1,2}(?:\.[0-9]+)?)\s*%?(?=\s|$)/i);
+      const match=after.match(/\b(A\+|A-|A|B\+|B-|B|C\+|C-|C|D\+|D-|D|F)\b\s+(100(?:\.0+)?|[0-9]{1,2}(?:\.[0-9]+)?)\s*%?\b/i);
+      if(!pair)continue;
+
+      const percent=Number(pair[2]);
+      if(percent<0 || percent>100)continue;
+      if(!detected.some(x=>normName(x.name)===normalName)){
+        detected.push({
+          name,
+          code:extractCode(name),
+          letter:pair[1].toUpperCase(),
+          percent,
+          credits:0
+        });
+      }
+    }
+    return detected;
+  }
+
+  /*
+    PowerSchool "Attendance By Class" is a table copied as plain text.
+    The COURSE is on the same physical line as the attendance columns, and
+    the following line contains the teacher Email. Therefore the previous
+    non-empty line is NOT itself the course name: the course name is the
+    trailing text after the last "Not available" cell.
+
+    Reliable block shape from the copied page:
+      ... Not available  Not available  COURSE NAME
+       Email Teacher...
+      - Rm:
+       ROOM
+      LETTER GRADE
+      PERCENT
+      ... attendance totals ...
+
+    We anchor each record on Email, extract only the trailing course-name
+    portion from the preceding line, then read grade + percentage from the
+    small block after Email. We never infer a course from arbitrary grade,
+    room, period, or attendance lines.
+  */
+  const raw=String(text||"")
+    .replace(/\r\n?/g,"\n")
+    .replace(/[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]/g," ");
+
+  const records=[];
+  const gradeRegex=/^(A\+|A-|A|B\+|B-|B|C\+|C-|C|D\+|D-|D|F)$/i;
+  const percentRegex=/^(100(?:\.0+)?|[0-9]{1,2}(?:\.[0-9]+)?)\s*%?$/;
+
+  function cleanCourseName(s){
+    return normalizeText(s)
+      .replace(/^[•·▪◦]+\s*/,"")
+      .replace(/\s*\*+\s*$/," ")
+      .trim();
+  }
+
+  function validCourseName(s){
+    const x=cleanCourseName(s);
+    const n=normName(x);
+    if(!x || x.length<2 || x.length>100)return false;
+    if(!/[A-Za-z]/.test(x))return false;
+
+    const blocked=[
+      "email","teacher","room","rm","attendance","attendance by class",
+      "attendance totals","advisory","self study","self-study","pshe",
+      "college readiness","not available","course","period","term",
+      "semester","days","time","exp","s1","s2","absences","tardies"
+    ];
+    if(blocked.some(w=>n===w))return false;
+    if(/^(?:email|teacher|room|rm)\b/i.test(x))return false;
+    if(/^(?:\d+|[-–—]+|[.\-]+)$/.test(x))return false;
+    if(/^(?:-?\s*)?(?:rm|room)\b/i.test(x))return false;
+    return true;
+  }
+
+  function extractCourseNameFromRow(row){
+    const x=normalizeText(row);
+    if(!x)return "";
+
+    // In the copied Attendance By Class table, the course name follows the
+    // final pair of "Not available" cells. This is the key fix for the
+    // original bug where the whole attendance row became the course name.
+    const nav=[...x.matchAll(/Not available/gi)];
+    if(nav.length){
+      const tail=x.slice(nav[nav.length-1].index + nav[nav.length-1][0].length).trim();
+      if(validCourseName(tail))return cleanCourseName(tail);
+    }
+
+    // Some PowerSchool layouts may omit "Not available". In that case,
+    // remove leading attendance/table cells and use the final plausible text
+    // segment only when it clearly looks like a course name.
+    const tokens=x.split(/\s+/).filter(Boolean);
+    const candidates=[];
+    for(let start=Math.max(0,tokens.length-8);start<tokens.length;start++){
+      const candidate=tokens.slice(start).join(" ");
+      if(validCourseName(candidate) && !/^\d/.test(candidate)) candidates.push(candidate);
+    }
+    if(candidates.length)return candidates[candidates.length-1];
+    return "";
+  }
+
+  // Locate every Email anchor. This is the course-block boundary.
+  const emailIndexes=[];
+  for(let i=0;i<lines.length;i++){
+    if(/\bEmail\b/i.test(lines[i])) emailIndexes.push(i);
+  }
+
+  for(let e=0;e<emailIndexes.length;e++){
+    const emailIndex=emailIndexes[e];
+    let nameIndex=emailIndex-1;
+    while(nameIndex>=0 && !lines[nameIndex])nameIndex--;
+    if(nameIndex<0)continue;
+
+    const name=extractCourseNameFromRow(lines[nameIndex]);
+    if(!validCourseName(name))continue;
+
+    const nextEmail=emailIndexes[e+1] ?? lines.length;
+    // Grade/percentage are immediately after Email and room information.
+    // Keep the window tight so we cannot consume the next course.
+    const scanEnd=Math.min(nextEmail,emailIndex+10);
+    let letter=null,percent=null;
+
+    for(let j=emailIndex+1;j<scanEnd;j++){
+      const line=lines[j];
+      if(!line)continue;
+      if(gradeRegex.test(line)){
+        if(letter===null)letter=line.toUpperCase();
+        continue;
+      }
+      if(letter!==null && percent===null && percentRegex.test(line)){
+        const p=Number(line.replace("%","").trim());
+        if(p>=0 && p<=100){percent=p;break;}
+      }
+    }
+
+    if(letter===null || percent===null)continue;
+
+    const code=extractCode(name);
+    if(!records.some(r=>normName(r.name)===normName(name))){
+      records.push({name,code,letter,percent,credits:0});
+    }
+  }
+  return records;
+}
+
+function parseCreditRecords(text){
+  /*
+    Course-request tables use rows like:
+    1. CHE204 Chemistry Required 10.00
+    Prerequisite notes may contain other course codes, so only a numbered
+    table-row start is treated as a course record.
+  */
+  {
+    const source=String(text||"")
+      .replace(/\r\n?/g,"\n")
+      .replace(/[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]/g," ")
+      .replace(/[\t\f\v]+/g," ");
+    const rowAnchors=[...source.matchAll(/(?:^|\n|\s)\d{1,3}\.\s+([A-Z]{2,8}\d{2,5}[A-Z]?)\b/gi)];
+    const tableRecords=[];
+
+    for(let i=0;i<rowAnchors.length;i++){
+      const anchor=rowAnchors[i];
+      const rowStart=anchor.index+anchor[0].length;
+      const rowEnd=i+1<rowAnchors.length ? rowAnchors[i+1].index : source.length;
+      const row=source.slice(rowStart,rowEnd);
+      const details=row.match(/^\s*(.{2,160}?)\s+(?:required|elective|optional|core)\s+(\d+(?:\.\d+)?)(?=\s|$)/i);
+      if(!details)continue;
+
+      const name=normalizeText(details[1]);
+      const credits=Number(details[2]);
+      if(name && credits>=0 && !isNoise(name)){
+        tableRecords.push({
+          code:anchor[1].toUpperCase(),
+          name,
+          credits
+        });
+      }
+    }
+
+    if(tableRecords.length)return tableRecords;
+  }
+
+  const raw=String(text||"")
+    .replace(/\r\n?/g,"\n")
+    .replace(/[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]/g," ");
+
+  const lines=raw.split("\n").map(normalizeText).filter(Boolean);
+  const out=[];
+  const codeRe=/\b([A-Z]{2,8}\d{2,5}[A-Z]?)\b/i;
+  const creditRe=/\b(\d+(?:\.\d+)?)\s*(?:credits?|cr)\b/i;
+
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i];
+    const cm=line.match(codeRe);
+    if(!cm)continue;
+
+    // Same-line: "MATH502 AP Calculus BC 10 credits"
+    const same=line.match(new RegExp(
+      codeRe.source+"\\s+(.{2,120}?)\\s+"+creditRe.source,"i"
+    ));
+    if(same){
+      const name=normalizeText(same[2]);
+      if(name && !isNoise(name)){
+        out.push({
+          code:cm[1].toUpperCase(),
+          name,
+          credits:Number(same[3])
+        });
+      }
+      continue;
+    }
+
+    // Multi-line: code/name may be followed by the credit value.
+    let nameParts=[normalizeText(line.replace(cm[0],"").trim())];
+    let credits=null;
+
+    for(let j=i+1;j<Math.min(lines.length,i+6);j++){
+      // Never cross into another coded course.
+      if(codeRe.test(lines[j]))break;
+
+      const cr=lines[j].match(creditRe);
+      if(cr){
+        credits=Number(cr[1]);
+        break;
+      }
+
+      // Ignore obvious table labels/noise.
+      if(!isNoise(lines[j]) && !/^\d+$/.test(lines[j])){
+        nameParts.push(lines[j]);
+      }
+    }
+
+    if(credits!==null){
+      const name=normalizeText(nameParts.join(" "))
+        .replace(creditRe,"")
+        .trim();
+      if(name && !isNoise(name)){
+        out.push({
+          code:cm[1].toUpperCase(),
+          name,
+          credits
+        });
+      }
+    }
+  }
+
+  // Deduplicate by code + normalized name.
+  return out.filter((x,i,a)=>
+    i===a.findIndex(y=>y.code===x.code && normName(y.name)===normName(x.name))
+  );
+}
+
+function matchCredits(record, credits){
+  if(!credits.length)return 0;
+
+  // 1) Exact course code is strongest.
+  if(record.code){
+    const exactCode=credits.find(x=>x.code && x.code===record.code);
+    if(exactCode)return exactCode.credits;
+  }
+
+  // 2) Exact normalized course name.
+  const target=normName(record.name);
+  const exactName=credits.find(x=>normName(x.name)===target);
+  if(exactName)return exactName.credits;
+
+  // 3) Conservative name matching.
+  // Never match short/common fragments or AP course variants such as
+  // "AP Calculus AB" -> "AP Calculus BC".
+  const tokenize=s=>normName(s).split(/\s+/).filter(Boolean);
+  const a=tokenize(record.name);
+  let best=null,bestScore=0;
+
+  for(const x of credits){
+    const b=tokenize(x.name);
+    if(!a.length || !b.length)continue;
+
+    // If both names contain a trailing course variant (AB/BC/etc.),
+    // require the variant to agree.
+    const variantA=a.find(t=>/^[a-z]\d?$/.test(t) || /^(?:ab|bc|cd|de)$/.test(t));
+    const variantB=b.find(t=>/^[a-z]\d?$/.test(t) || /^(?:ab|bc|cd|de)$/.test(t));
+    if(variantA && variantB && variantA!==variantB)continue;
+
+    const common=a.filter(t=>t.length>=3 && b.includes(t));
+    const union=new Set([...a,...b]).size;
+    const coverageA=a.length?common.length/a.length:0;
+    const coverageB=b.length?common.length/b.length:0;
+    const score=union?common.length/union:0;
+
+    // Require the candidate to cover most of the grade-page name and have
+    // substantial overlap. This avoids matching "Calculus" to unrelated rows.
+    if(coverageA>=0.8 && coverageB>=0.5 && score>=0.65 && score>bestScore){
+      bestScore=score;
+      best=x;
+    }
+  }
+
+  return best?best.credits:0;
+}
+
+// Official 2026–2027 VMA US Track course catalogue. Only formal course
+// entries are included; prerequisite references are intentionally omitted.
+const defaultCourseDatabase=`RE102|College Readiness I|2
+RE202|College Readiness II|2
+RE302|College Readiness III|2
+RE402|College Readiness IV|2
+PSHE102|PSHE I|N/A
+PSHE202|PSHE II|N/A
+PSHE302|PSHE III|N/A
+PSHE402|PSHE IV|N/A
+ENG101|ELL English Language Development Ab Initio|10
+ENG209|ELL English Language Development 1|10
+ENG210|ELL English Language Development 2|5
+ENG312|ELL English Language Development 3|5
+ENG313|ELL English Language Development 4|10
+ENG107|English 1|10
+ENG108|English 1 Honors|10
+ENG206|English 2 Remediation|20
+ENG207|English 2|10
+ENG208|English 2 Honors Literary Analysis & Composition|10
+ENG211|Communication: Public Speaking and Debate|5
+ENG305|English 3|10
+ENG309|Introduction to Creative Writing|5
+ENG310|Journalism Writing|5
+ENG318|English 3 Honors|10
+ENG401|English 4|10
+ENG501|AP English Literature and Composition|10
+ENG502|AP English Language and Composition|10
+SPA201|Spanish I|10
+SPA301|Spanish II|10
+GER201|German I|10
+GER301|German II|10
+SCI204|Integrated Science I|10
+SCI208|Integrated Science I Honors|10
+SCI303|Integrated Science II|10
+SCI501|AP Environmental Science|10
+BIO204|Biology|10
+BIO303|Botany|5
+BIO501|AP Biology|10
+CHE204|Chemistry|10
+CHE303|Chemistry of Cooking|5
+CHE501|AP Chemistry|10
+PHY204|Physics|10
+PHY303|Astronomy|5
+PHY501|AP Physics 1: Algebra-Based|10
+PHY502|AP Physics 2: Algebra-Based|10
+PHY503|AP Physics C: Mechanics|5
+PHY504|AP Physics C: Electricity and Magnetism|5
+CSE102|Information and Communication Technology|5
+CSE202|Information Technology|5
+CSE302|Programming with Java|5
+CSE303|Web Design & Internet|5
+CSE304|Programming with Python|5
+CSE400|Introduction to Artificial Intelligence|5
+CSE501|AP Computer Science A|10
+CSE502|AP Computer Science Principles|10
+EGR200|Introduction to CAD|5
+EGR303|Design Thinking|5
+EGR309|Programming with Electronics|5
+EGR403|Robotics Engineering|10
+MATH101|Pre-Algebra|10
+MATH105|Algebra I|10
+MATH205|Algebra II|10
+MATH302|Precalculus|10
+MATH311|Statistics and Probability|10
+MATH501|AP Calculus AB|10
+MATH502|AP Calculus BC|10
+MATH503|AP Statistics|10
+MATH504|AP Precalculus|10
+MATH604|Financial Mathematics|10
+MATH606|Introduction to Linear Algebra|10
+ECO501|AP Microeconomics|10
+ECO502|AP Macroeconomics|10
+GEO201|Geography and World History|5
+GEO501|AP Human Geography|10
+HIS203|Chinese and World History|5
+HIS302|Politics and International Relations|5
+HIS304|US History|10
+HIS308|Politics and International Relations Honors|5
+HIS501|AP United States History|10
+HIS503|AP World History: Modern|10
+HIS508|AP Art History|10
+HIS601|Introduction to Philosophy|10
+PSY303|Psychology|5
+PSY501|AP Psychology|10
+RE103|Global Perspectives|10
+RE108|Global Perspectives Honors|10
+RE203|Research Seminar I|5
+RE208|Research Seminar I Honors|5
+RE303|Research Seminar II|5
+RE403|Research Seminar III|5
+RE504|AP Seminar|10
+RE505|AP Research|10
+CHI102|Chinese 1|10
+CHI202|Chinese 2|5
+CHI302|Chinese 3|5
+CHI401|Selected Chinese Classic Readings|5
+CHI405|Intercultural Communication and Studies|5
+CHI406|Comparative Literature and World Literature|5
+PE101|Year 1 General PE|5
+PE200|Aquatics & Fitness|5
+PE211|Year 2 General PE|5
+PE214|Varsity Sports Leadership|10
+PE300|Year 3 Physical Education: Individual Sport|5
+PE301|Year 3 Physical Education: Team Sport|5
+PE304|Badminton|5
+PE306|Volleyball|5
+PE316|Tennis|5
+PE400|Year 4 Physical Education: Individual Sport|5
+PE401|Year 4 Physical Education: Team Sport|5
+ART200|General Visual Art Foundation|5
+ART214|Wood Art II|5
+ART310|3D Modeling and Print|5
+ART313|Print Making|5
+ART314|Wood Art III|5
+ARTA401|Graphic Studio|10
+ARTA403|Fashion Studio|10
+ARTA405|Product Studio|10
+ARTA406|Animation and Moving Image Studio|10
+ARTA410|Portfolio Development I|20
+ARTA412|Portfolio Development II|10
+ART501|AP 2-D Art and Design|10
+ART502|AP 3-D Art and Design|10
+ART503|AP Drawing|10
+ARTA601|Modern and Contemporary Art|10
+ARTA699|Capstone|10
+DAN203|Dance II|5
+DAN303|Dance III|5
+DAN403|Dance Performance|10
+MUS203|Vocal Music|5
+MUS207|Introduction to Western Music|5
+MUS216|Electone|5
+MUS217|Piano|5
+MUS403|Vocal Performance|10
+MUS408|Piano Performance Honors|10
+MUS410|Chorus|10
+TH202|Theatre|5
+TH403|Theatre Production|10`.split("\n").map(row=>{const [code,name,credits]=row.split("|");return {code,name,credits:credits==="N/A"?null:Number(credits)}});
+let courseDatabase=defaultCourseDatabase;
+
+async function loadHostedCourseDatabase(){
+  try{
+    const response=await fetch("/api/courses",{headers:{Accept:"application/json"}});
+    const remote=await response.json();
+    if(response.ok&&Array.isArray(remote)&&remote.length){
+      courseDatabase=remote.map(course=>({code:String(course.code||"").toUpperCase(),name:String(course.name||""),credits:course.credits===null?null:Number(course.credits)})).filter(course=>course.code&&course.name);
+      if(document.getElementById("catalogDialog").style.display==="flex")renderCatalog();
+    }
+  }catch(_){/* Static catalogue remains available when no API is deployed. */}
+}
+
+function matchDatabaseCourse(record){
+  const code=String(record.code||extractCode(record.name)).toUpperCase();
+  if(code){
+    const byCode=courseDatabase.find(course=>course.code===code);
+    if(byCode)return byCode;
+  }
+  const target=normName(record.name).replace(normName(code),"").trim();
+  return courseDatabase.find(course=>normName(course.name)===target)||null;
+}
+
+function openCatalog(){
+ const dialog=document.getElementById("catalogDialog");
+ dialog.style.display="flex";
+ document.getElementById("catalogSearch").value="";
+ renderCatalog();
+ document.getElementById("catalogSearch").focus();
+}
+function closeCatalog(){document.getElementById("catalogDialog").style.display="none"}
+function renderCatalog(){
+ const query=normName(document.getElementById("catalogSearch").value);
+ const items=courseDatabase.filter(course=>!query||normName(course.code).includes(query)||normName(course.name).includes(query));
+ const list=document.getElementById("catalogList");
+ if(!items.length){list.innerHTML=`<div class="catalog-empty">${language==="zh"?"没有找到课程。":"No courses found."}</div>`;return}
+ list.innerHTML=`<table><thead><tr><th>${t("course")}</th><th>${t("code")}</th><th>${t("credits")}</th></tr></thead><tbody>${items.map(course=>`<tr><td>${escapeHtml(course.name)}</td><td>${escapeHtml(course.code)}</td><td>${course.credits===null?"N/A":course.credits}</td></tr>`).join("")}</tbody></table>`;
+}
+
+let pendingImports=[];
+let pendingImportAdditions=[];
+function parsePowerSchool(){
+ const grades=document.getElementById("gradesText").value;
+ pendingImports=parseGradeRecords(grades);
+ pendingImports.forEach(r=>{
+   const match=matchDatabaseCourse(r);
+   r.code=r.code||match?.code||"";
+   r.databaseMatch=match;
+   r.credits=match?.credits??0;
+   r.notForGpa=!!match && match.credits===null;
+ });
+ renderPreview();
+}
+function renderPreview(){
+ const status=document.getElementById("importStatus"), box=document.getElementById("preview");
+ if(!pendingImports.length){
+   status.textContent=t("noMatches");
+   status.className="status warning"; box.innerHTML=""; return;
+ }
+ const missing=pendingImports.filter(x=>!x.credits&&!x.notForGpa).length;
+ status.textContent=formatText(missing?"detectedMissing":"detectedComplete",{count:pendingImports.length,missing});
+ status.className="status "+(missing?"warning":"success");
+ box.innerHTML=`<h3>${t("detectedCourses")}</h3><table><thead><tr><th>${t("code")}</th><th>${t("course")}</th><th>${t("grade")}</th><th>${t("percentage")}</th><th>${t("credits")}</th></tr></thead><tbody>
+ ${pendingImports.map((r,i)=>`<tr class="${r.credits||r.notForGpa?"":"credit-unmatched"}"><td>${escapeHtml(r.code)}</td><td>${escapeHtml(r.databaseMatch?.name||r.name)}</td><td>${escapeHtml(r.letter)}</td><td>${r.percent}%</td><td>${r.notForGpa?"N/A":`<input class="preview-credit" data-import-index="${i}" type="number" min="0" step="0.01" value="${r.credits?escapeHtml(r.credits):""}" placeholder="${t("enterCredits")}" oninput="updatePendingCredit(this)">`}</td></tr>`).join("")}
+ </tbody></table><div class="import-actions"><button class="btn primary" onclick="importCourses()">${t("importButton")}</button></div>`;
+}
+function updatePendingCredit(input){
+ const record=pendingImports[Number(input.dataset.importIndex)];
+ if(!record)return;
+ const amount=Number(input.value);
+ record.credits=Number.isFinite(amount)&&amount>=0?amount:0;
+ record.notForGpa=false;
+ input.closest("tr").classList.toggle("credit-unmatched",!record.credits);
+
+ const missing=pendingImports.filter(x=>!x.credits&&!x.notForGpa).length;
+ const status=document.getElementById("importStatus");
+ status.textContent=formatText(missing?"detectedMissing":"detectedComplete",{count:pendingImports.length,missing});
+ status.className="status "+(missing?"warning":"success");
+}
+function importCourses(){
+ if(!pendingImports.length)return;
+ const additions=pendingImports.filter(r=>r.credits>0&&!r.notForGpa).map(r=>({name:r.databaseMatch?.name||r.name,code:r.code,grade:r.percent,credits:r.credits}));
+ if(!additions.length){alert(t("noCreditsToImport"));return}
+ pendingImportAdditions=additions;
+ if(courses.length){openImportChoice();return}
+ commitImportedCourses(false);
+}
+function openImportChoice(){
+ const dialog=document.getElementById("importChoiceDialog");
+ dialog.style.display="flex";
+ dialog.querySelector("button").focus();
+}
+function closeImportChoice(){
+ document.getElementById("importChoiceDialog").style.display="none";
+ pendingImportAdditions=[];
+}
+function commitImportedCourses(overwrite){
+ const additions=pendingImportAdditions;
+ if(!additions.length)return;
+ document.getElementById("importChoiceDialog").style.display="none";
+ courses=overwrite?additions:courses.concat(additions);
+ save();render();pendingImports=[];pendingImportAdditions=[];renderPreview();
+ document.getElementById("importStatus").textContent=formatText(overwrite?"importedOverwritten":"importedKept",{count:additions.length});
+ document.getElementById("importStatus").className="status success";
+}
+function openGuide(){
+ const dialog=document.getElementById("guideDialog");
+ dialog.style.display="flex";
+ dialog.querySelector("button").focus();
+}
+function closeGuide(){document.getElementById("guideDialog").style.display="none"}
+applyLanguage();
+loadHostedCourseDatabase();
+</script>
+</body></html>
