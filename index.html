@@ -92,7 +92,7 @@ const translations={
  }
 };
 Object.assign(translations.en,{courseCatalog:"Course Catalog",catalogSource:"Source: VMA 2026–2027 US Track Course Catalogue. Date of last update: Sep 22, 2026",catalogSearchPlaceholder:"Search by course name or code...",guideTitle:"How to use VMA GPA Calculator"});
-Object.assign(translations.zh,{courseCatalog:"课程目录",catalogSource:"数据来源：VMA 2026–2027 US Track Course Catalogue. 数据仅供参考 最近更新日期2026/09/22",catalogSearchPlaceholder:"按课程名称或代码搜索...",guideTitle:"VMA GPA Calculator 使用说明"});
+Object.assign(translations.zh,{courseCatalog:"课程目录",catalogSource:"数据来源：VMA 2026–2027 US Track Course Catalogue. 数据仅供参考 最近更新日期: 2026/09/22",catalogSearchPlaceholder:"按课程名称或代码搜索...",guideTitle:"VMA GPA Calculator 使用说明"});
 function t(key){return translations[language][key]||translations.en[key]||key}
 function formatText(key,values){let output=t(key);Object.entries(values||{}).forEach(([name,value])=>output=output.replace(`{${name}}`,value));return output}
 function setLanguage(value){language=value==="zh"?"zh":"en";localStorage.setItem("gradepilot-language",language);applyLanguage()}
