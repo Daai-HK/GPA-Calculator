@@ -180,6 +180,12 @@ function normalizeText(s){
 function normName(s){
  return normalizeText(s).toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 }
+// PowerSchool appends UI affordances such as "Show details" to some course
+// links when the page is copied. That text is page chrome, not part of the
+// course name, so strip it from any course name we extract.
+function stripUiNoise(s){
+ return normalizeText(String(s||"").replace(/\b(?:show|hide)\s+details?\b/gi," "));
+}
 function extractCode(s){
  const m=String(s||"").match(/\b[A-Z]{2,6}\d{2,4}[A-Z]?\b/i);
  return m?m[0].toUpperCase():"";
@@ -222,7 +228,7 @@ function parseGradeRecords(text){
       let name=lastNotAvailable>=0
         ? before.slice(lastNotAvailable+"not available".length)
         : finalLine;
-      name=normalizeText(name)
+      name=stripUiNoise(name)
         .replace(/^[•·▪◦]+\s*/,"")
         .replace(/\s*\*+\s*$/,"")
         .trim();
@@ -286,7 +292,7 @@ function parseGradeRecords(text){
   const percentRegex=/^(100(?:\.0+)?|[0-9]{1,2}(?:\.[0-9]+)?)\s*%?$/;
 
   function cleanCourseName(s){
-    return normalizeText(s)
+    return stripUiNoise(s)
       .replace(/^[•·▪◦]+\s*/,"")
       .replace(/\s*\*+\s*$/," ")
       .trim();
