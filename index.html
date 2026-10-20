@@ -188,7 +188,7 @@ function gradeFromPercent(n){return points(Number(n))[2]}
 function isNoise(s){
  const x=normName(s);
  if(!x)return true;
- const noise=["teacher","room","rm","email","attendance","not available","advisory","self study","pshe","college readiness","course","period","term","semester","days","time"];
+ const noise=["teacher","room","rm","email","attendance","not available","advisory","self study","pshe","college readiness","course","period","term","semester","days","time","Show details"];
  return noise.some(w=>x===w||x.includes(w));
 }
 function parseGradeRecords(text){
